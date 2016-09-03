@@ -3,9 +3,9 @@ JS-Raymarch By Chris Hinsley 2016
 
 JavaScript/HTML/WebGL Raymarch test.
 
-I gathered several bit of code from the web, demo scene etc to put together this
-test, mainly to grok the concepts myself. To all those in the demo scene, you
-know who you are, that shared code and concepts to enable others to do this,
+I gathered several bits of code from the web, demo scene etc to put together
+this test, mainly to grok the concepts myself. To all those in the demo scene,
+you know who you are, that shared code and concepts to enable others to do this,
 thank you.
 
 I'm going to turn this into a ShaderToy example at some point, got a plan to do
