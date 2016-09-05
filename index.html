@@ -303,7 +303,7 @@ float calc_shadow(vec3 ro, vec3 rd, float start, float end, float k)
         if (shade <= 0.1 || d >= end) break;
 		d += max(min_distance, h);
     }
-    return clamp(shade, 0.1, 1.0);
+    return max(shade, 0.1);
 }
 
 vec3 lighting(vec3 sp, vec3 sn, vec3 cp)
