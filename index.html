@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -21,6 +22,7 @@ var arg_aa_location;
 var arg_ao_location;
 var arg_depth_location;
 var arg_ref_location;
+var arg_shadow_location;
 
 function getShader(gl, id)
 {
@@ -65,14 +67,14 @@ function main()
 
     gl.getExtension('OES_standard_derivatives');
 
-    var vertexShader = getShader(gl, "2d-vertex-shader");
-    var fragmentShader = getShader(gl, "2d-fragment-shader");
+    var vertex_shader = getShader(gl, "2d-vertex-shader");
+    var fragment_shader = getShader(gl, "2d-fragment-shader");
     var program = gl.createProgram();
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
+    gl.attachShader(program, vertex_shader);
+    gl.attachShader(program, fragment_shader);
     gl.linkProgram(program);
-    gl.deleteShader(vertexShader);
-    gl.deleteShader(fragmentShader);
+    gl.deleteShader(vertex_shader);
+    gl.deleteShader(fragment_shader);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS))
     {
@@ -84,9 +86,9 @@ function main()
 
     gl.useProgram(program);
 
-    var positionLocation = gl.getAttribLocation(program, "a_position");
-    var resolutionLocation = gl.getUniformLocation(program, "resolution");
-    gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+    var position_location = gl.getAttribLocation(program, "position");
+    var resolution_location = gl.getUniformLocation(program, "resolution");
+    gl.uniform2f(resolution_location, canvas.width, canvas.height);
 
 	arg_aa_location = gl.getUniformLocation(program, "arg_aa");
     gl.uniform1i(arg_aa_location, 0);
@@ -96,12 +98,14 @@ function main()
     gl.uniform1i(arg_depth_location, 0);
 	arg_ref_location = gl.getUniformLocation(program, "arg_ref");
     gl.uniform1f(arg_ref_location, 0);
+	arg_shadow_location = gl.getUniformLocation(program, "arg_shadow");
+    gl.uniform1f(arg_shadow_location, 0);
 
     var mx = Math.max(canvas.width, canvas.height);
     var xdivmx = canvas.width/mx;
     var ydivmx = canvas.height/mx;
-    var screenRatioLocation = gl.getUniformLocation(program, "screenRatio");
-    gl.uniform2f(screenRatioLocation, xdivmx, ydivmx);
+    var screen_ratio_location = gl.getUniformLocation(program, "screen_ratio");
+    gl.uniform2f(screen_ratio_location, xdivmx, ydivmx);
 
     time_location = gl.getUniformLocation(program, "time");
     gl.uniform1f(time_location, time);
@@ -115,8 +119,8 @@ function main()
     -1.0,  1.0,
      1.0, -1.0,
      1.0,  1.0]), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(positionLocation);
-    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(position_location);
+    gl.vertexAttribPointer(position_location, 2, gl.FLOAT, false, 0, 0);
 
     document.getElementById('info').innerHTML = "<i>Frame Rate</i>: ...";
     start = Date.now();
@@ -152,6 +156,7 @@ function render()
 	gl.uniform1f(arg_ao_location, document.getElementById("arg_ao").value);
 	gl.uniform1i(arg_depth_location, document.getElementById("arg_depth").value);
 	gl.uniform1f(arg_ref_location, document.getElementById("arg_ref").value);
+	gl.uniform1f(arg_shadow_location, document.getElementById("arg_shadow").value);
 
     var elapsedtime = (Date.now() - start)/1000.0;
     var framespeed = 1.0;
@@ -173,14 +178,14 @@ function render()
 </script>
 
 <script id="2d-vertex-shader" type="x-shader/x-vertex">
-attribute vec2 a_position;
-varying vec2 surfacePosition;
-uniform vec2 screenRatio;
+attribute vec2 position;
+uniform vec2 screen_ratio;
+varying vec2 surface_position;
 
 void main()
 {
-    surfacePosition = a_position*screenRatio;
-    gl_Position = vec4(a_position, 0, 1);
+    surface_position = position*screen_ratio;
+    gl_Position = vec4(position, 0, 1);
 }
 </script>
 
@@ -195,24 +200,22 @@ uniform int arg_aa;
 uniform int arg_depth;
 uniform float arg_ao;
 uniform float arg_ref;
+uniform float arg_shadow;
 
 #define PI 3.1415926535898
 
 const float eps = 0.001;
-const int maxIterations = 128;
-const int maxIterationsShad = 24;
-const float stepScale = 1.0;
-const float stopThreshold = 0.001;
+const float min_distance = 0.005;
 const float clipFar = 16.0;
 const vec3 bgcolor = vec3(0.);
 
-vec3 camPos = vec3(0., 0., time*0.1);
-vec3 lightPos = vec3(camPos.x + 0.25*cos(time), camPos.y + 0.25*sin(time), camPos.z);
+vec3 cam_pos = vec3(0., 0., time*0.1);
+vec3 light_pos = vec3(cam_pos.x + 0.5*cos(time), cam_pos.y + 0.0*sin(time), cam_pos.z);
 
 //field equation for a sphere.
-float sphere(in vec3 p, in vec3 centerPos, float radius)
+float sphere(in vec3 p, in vec3 center, float radius)
 {
-    return length(p-centerPos) - radius;
+    return length(p-center) - radius;
 }
 
 //field equation for a cube.
@@ -251,7 +254,7 @@ float scene(in vec3 p)
 //                sphere(p, vec3(0.,0.,0.), 0.35));
 }
 
-vec3 getNormal(in vec3 p)
+vec3 get_normal(in vec3 p)
 {
 	return normalize(vec3(
 		scene(vec3(p.x+eps,p.y,p.z))-scene(vec3(p.x-eps,p.y,p.z)),
@@ -260,22 +263,22 @@ vec3 getNormal(in vec3 p)
 	));
 }
 
-float rayMarching(vec3 origin, vec3 dir, float start, float end)
+float ray_march(vec3 origin, vec3 dir, float start, float end)
 {
-    float sceneDist = 1e4;
-	float rayDepth = start;
-	for (int i = 0; i < maxIterations; i++)
+    float d = 1e4;
+	float rd = start;
+	for (int i = 0; i < 1000000; i++)
     {
-		sceneDist = scene(origin + dir*rayDepth);
-		if ((sceneDist < stopThreshold) || (rayDepth >= end)) break;
-		rayDepth += sceneDist*stepScale;
+		d = scene(origin + dir*rd);
+		if ((d <= min_distance) || (rd >= end)) break;
+		rd += d;
 	}
-	if (sceneDist >= stopThreshold) rayDepth = end;
-	else rayDepth += sceneDist;
-	return rayDepth;
+	rd += d;
+	if (d > min_distance) rd = end;
+	return rd;
 }
 
-float calculateAO(vec3 p, vec3 n)
+float calc_ao(vec3 p, vec3 n)
 {
    const float AO_SAMPLES = 5.0;
    float r = 0.0;
@@ -289,54 +292,52 @@ float calculateAO(vec3 p, vec3 n)
    return 1.0-clamp(r,0.0,1.0);
 }
 
-float softShadow(vec3 ro, vec3 rd, float start, float end, float k)
+float calc_shadow(vec3 ro, vec3 rd, float start, float end, float k)
 {
     float shade = 1.0;
-    float dist = start;
-    float stepDist = end/float(maxIterationsShad);
-    for (int i=0; i<maxIterationsShad; i++)
+    float d = start;
+    for (int i = 0; i < 1000000; i++)
     {
-        float h = scene(ro + rd*dist);
-        shade = min(shade, k*h/dist);
-        dist += min(h, stepDist*2.);
-        if (h<0.001 || dist > end) break;
+        float h = scene(ro + rd*d);
+        shade = min(shade, k*h/d);
+        if (shade <= 0.1 || d >= end) break;
+		d += max(min_distance, h);
     }
-    return min(max(shade, 0.) + 0.25, 1.0);
+    return clamp(shade, 0.1, 1.0);
 }
 
 vec3 lighting(vec3 sp, vec3 sn, vec3 cp)
 {
-	vec3 objColor = floor(mod(sp*0.5, 1.0)+0.5);
-    objColor = clamp(objColor, 0.0, 1.0);
+	vec3 obj_color = floor(mod(sp, 2.0));
 
-    vec3 lp = lightPos;
+    vec3 lp = light_pos;
     vec3 ld = lp-sp;
-    vec3 lcolor = vec3(1.,1.,1.);
+    vec3 lcolor = vec3(1.0,1.0,1.0);
 
     float len = length(ld);
     ld /= len;
     float lightAtten = min(1.0 / (0.25*len*len), 1.0);
 
     vec3 ref = reflect(-ld, sn);
-	float ss=softShadow(sp, ld, stopThreshold*2.0, len, 32.0);
+	float ss = calc_shadow(sp, ld, min_distance, len, arg_shadow);
 
     float ao = 1.0-arg_ao;
-	if (ao < 1.0) ao = ao + (1.0-ao)*calculateAO(sp, sn);
+	if (ao < 1.0) ao = ao + (1.0-ao)*calc_ao(sp, sn);
 
     float ambient = .05;
     float specularPower = 8.0;
     float diffuse = max(0.0, dot(sn, ld));
     float specular = max(0.0, dot(ref, normalize(cp-sp)));
     specular = pow(specular, specularPower);
-    return (objColor*(diffuse*0.8+ambient)+specular*0.5)*lcolor*lightAtten*ss*ao;
+    return (obj_color*(diffuse*0.8+ambient)+specular*0.5)*lcolor*lightAtten*ss*ao;
 }
 
 vec3 scene_ray(vec3 ro, vec3 rd)
 {
-	float dist = rayMarching(ro, rd, 0.0, clipFar);
-	if (dist >= clipFar) return bgcolor;
-	vec3 sp = ro + rd*dist;
-	vec3 sn = getNormal(sp);
+	float d = ray_march(ro, rd, 0.0, clipFar);
+	if (d >= clipFar) return bgcolor;
+	vec3 sp = ro + rd*d;
+	vec3 sn = get_normal(sp);
 	vec3 color = lighting(sp, sn, ro);
 	float ref = arg_ref;
 	for (int i = 1; i > 0; i++)
@@ -344,14 +345,14 @@ vec3 scene_ray(vec3 ro, vec3 rd)
 		if (i > arg_depth) break;
 		ro = sp;
 		rd = reflect(rd, sn);
-		dist = rayMarching(ro, rd, stopThreshold*5.0, clipFar);
-		if (dist >= clipFar)
+		d = ray_march(ro, rd, min_distance*5.0, clipFar);
+		if (d >= clipFar)
 		{
 			color += bgcolor*ref;
 			break;
 		}
-		sp = ro + rd*dist;
-		sn = getNormal(sp);
+		sp = ro + rd*d;
+		sn = get_normal(sp);
 		color += lighting(sp, sn, ro)*ref;
 		ref *= arg_ref;
 	}
@@ -362,30 +363,30 @@ void main(void)
 {
 	const float FOV = 0.5;
     vec2 aspect = vec2(resolution.x/resolution.y, 1.0);
-	vec3 lookAt = vec3(0., 0., 0.);
-    vec3 forward = normalize(lookAt-camPos);
+	vec3 lookat = vec3(0., 0., 0.);
+    vec3 forward = normalize(lookat-cam_pos);
     vec3 right = normalize(vec3(forward.z, 0., -forward.x));
     vec3 up = normalize(cross(forward,right));
 
-	vec2 screenCoords = (2.0*gl_FragCoord.xy/resolution.xy - 1.0)*aspect;
-    vec3 rd = normalize(forward + FOV*screenCoords.x*right + FOV*screenCoords.y*up);
-	vec3 color = scene_ray(camPos, rd);
+	vec2 screen_cords = (2.0*gl_FragCoord.xy/resolution.xy - 1.0)*aspect;
+    vec3 rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+	vec3 color = scene_ray(cam_pos, rd);
 	float scale = 1.0;
 	if (arg_aa != 0)
 	{
 		scale = 0.25;
 
-		screenCoords = (2.0*(gl_FragCoord.xy+vec2(0.5, 0.0))/resolution.xy - 1.0)*aspect;
-	    rd = normalize(forward + FOV*screenCoords.x*right + FOV*screenCoords.y*up);
-		color += scene_ray(camPos, rd);
+		screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.5, 0.0))/resolution.xy - 1.0)*aspect;
+	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+		color += scene_ray(cam_pos, rd);
 
-		screenCoords = (2.0*(gl_FragCoord.xy+vec2(0.0, 0.5))/resolution.xy - 1.0)*aspect;
-	    rd = normalize(forward + FOV*screenCoords.x*right + FOV*screenCoords.y*up);
-		color += scene_ray(camPos, rd);
+		screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.0, 0.5))/resolution.xy - 1.0)*aspect;
+	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+		color += scene_ray(cam_pos, rd);
 
-		screenCoords = (2.0*(gl_FragCoord.xy+vec2(0.5, 0.5))/resolution.xy - 1.0)*aspect;
-	    rd = normalize(forward + FOV*screenCoords.x*right + FOV*screenCoords.y*up);
-		color += scene_ray(camPos, rd);
+		screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.5, 0.5))/resolution.xy - 1.0)*aspect;
+	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+		color += scene_ray(cam_pos, rd);
 	}
 	gl_FragColor = vec4(color*scale, 1.0);
 }
@@ -393,16 +394,51 @@ void main(void)
 </head>
 <body>
 	<div style="width:100%;">
-		<div style="float:left; width:80%;">
+		<div style="float:left; width:75%;">
 			<h1 id="heading">Raymarching Test</h1>
 	        <canvas id="canvas" width="1024" height="768"></canvas>
 	        <div id="info"></div>
 		</div>
-		<div style="float:left; width:20%;">
-			<input id="arg_aa" type="checkbox">Anti Alias<br>
-			<input id="arg_ao" type="range" min="0" max="1" step="0.001" value ="0"/>Ambient Oclusion<br>
-			<input id="arg_depth" type="range" min="0" max="2" step="1" value ="0"/>Reflection Depth<br>
-			<input id="arg_ref" type="range" min="0" max="1" step="0.001" value ="0.3"/>Reflection Coef<br>
+		<div style="float:left; width:25%;">
+			<table style="width:100%">
+			  <tr>
+			    <td>
+					<input id="arg_aa" type="checkbox">Anti Alias<br>
+				</td>
+			  </tr>
+			  <tr>
+			    <td>
+					<input id="arg_depth_num" type="number" min="0" max="2" step="1" value ="1" oninput="arg_depth.value=value"/>
+				</td>
+				<td>
+					<input id="arg_depth" type="range" min="0" max="2" step="1" value ="1" oninput="arg_depth_num.value=value"/>Reflection Depth<br>
+				</td>
+			  </tr>
+			  <tr>
+			    <td>
+					<input id="arg_ref_num" type="number" min="0" max="1" step="0.01" value ="0.3" oninput="arg_ref.value=value"/>
+				</td>
+				<td>
+					<input id="arg_ref" type="range" min="0" max="1" step="0.01" value ="0.3" oninput="arg_ref_num.value=value"/>Reflection Coef<br>
+				</td>
+			  </tr>
+			  <tr>
+			    <td>
+					<input id="arg_ao_num" type="number" min="0" max="1" step="0.01" value ="0.2" oninput="arg_ao.value=value"/>
+				</td>
+				<td>
+					<input id="arg_ao" type="range" min="0" max="1" step="0.01" value ="0.2" oninput="arg_ao_num.value=value"/>Ambient Oclusion<br>
+				</td>
+			  </tr>
+			  <tr>
+			    <td>
+					<input id="arg_shadow_num" type="number" min="32" max="256" step="0.01" value ="32" oninput="arg_shadow.value=value"/>
+				</td>
+				<td>
+					<input id="arg_shadow" type="range" min="32" max="256" step="0.01" value ="32" oninput="arg_shadow_num.value=value"/>Shadow Softness<br>
+				</td>
+			  </tr>
+			</table>
 		</div>
 	</div>
 </body>
