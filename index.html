@@ -163,7 +163,7 @@ function render()
     var framespeed = 1.0;
     time += framespeed*elapsedtime;
     gl.uniform1f(time_location, time);
-//    gl.uniform1f(time_location, 0.1);
+    gl.uniform1f(time_location, 0.1);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     fps++;
@@ -388,17 +388,56 @@ void main(void)
         {
             if (color.w > arg_aa_limit)
             {
-        		scale = 0.25;
-        		screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.5, 0.0))/resolution.xy - 1.0)*aspect;
-        	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
-        		color += scene_ray(cam_pos, rd);
-        		screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.0, 0.5))/resolution.xy - 1.0)*aspect;
-        	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
-        		color += scene_ray(cam_pos, rd);
-        		screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.5, 0.5))/resolution.xy - 1.0)*aspect;
-        	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
-        		color += scene_ray(cam_pos, rd);
-                if (arg_aa_debug != 0) color += vec4(4.0);
+        		scale = 0.3333;
+
+                vec2 dir = floor(mod(gl_FragCoord.xy, 2.0));
+                if (dir.y < 1.0)
+                {
+                    if (dir.x < 1.0)
+                    {
+                        screen_cords = (2.0*(gl_FragCoord.xy+vec2(-0.5, 0.0))/resolution.xy - 1.0)*aspect;
+                	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+                        color += scene_ray(cam_pos, rd);
+
+                        screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.5, 0.0))/resolution.xy - 1.0)*aspect;
+                	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+                		color += scene_ray(cam_pos, rd);
+                    }
+                    else
+                    {
+                        screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.0, -0.5))/resolution.xy - 1.0)*aspect;
+                	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+                		color += scene_ray(cam_pos, rd);
+
+                        screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.0, 0.5))/resolution.xy - 1.0)*aspect;
+                	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+                		color += scene_ray(cam_pos, rd);
+                    }
+                }
+                else
+                {
+                    if (dir.x < 1.0)
+                    {
+                        screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.0, -0.5))/resolution.xy - 1.0)*aspect;
+                	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+                		color += scene_ray(cam_pos, rd);
+
+                        screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.0, 0.5))/resolution.xy - 1.0)*aspect;
+                	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+                		color += scene_ray(cam_pos, rd);
+                    }
+                    else
+                    {
+                        screen_cords = (2.0*(gl_FragCoord.xy+vec2(-0.5, 0.0))/resolution.xy - 1.0)*aspect;
+                	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+                		color += scene_ray(cam_pos, rd);
+
+                        screen_cords = (2.0*(gl_FragCoord.xy+vec2(0.5, 0.0))/resolution.xy - 1.0)*aspect;
+                	    rd = normalize(forward + FOV*screen_cords.x*right + FOV*screen_cords.y*up);
+                		color += scene_ray(cam_pos, rd);
+                    }
+                }
+                if (arg_aa_debug != 0) color += vec4(2.0);
             }
         }
         else
