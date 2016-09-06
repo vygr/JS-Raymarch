@@ -162,8 +162,8 @@ function render()
     var elapsedtime = (Date.now() - start)/1000.0;
     var framespeed = 1.0;
     time += framespeed*elapsedtime;
-//    gl.uniform1f(time_location, time);
-    gl.uniform1f(time_location, 0.1);
+    gl.uniform1f(time_location, time);
+//    gl.uniform1f(time_location, 0.1);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     fps++;
