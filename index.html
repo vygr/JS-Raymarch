@@ -322,8 +322,7 @@ vec3 lighting(vec3 sp, vec3 sn, vec3 cp)
 
 vec2 ray_march(vec3 ro, vec3 rd, float l, float end)
 {
-    float d = 1e4;
-    float cnt;
+    float d, cnt;
     for (float i = 0.0; i < 1000.0; i++)
     {
 		d = scene(ro + rd*l);
