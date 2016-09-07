@@ -13,7 +13,7 @@ window.onload = main;
 var gl;
 
 var start_time;
-var num_frames = 0;
+var snapshot_times = [];
 
 var time_location;
 var arg_aa_location;
@@ -119,8 +119,7 @@ function main()
     gl.vertexAttribPointer(position_location, 2, gl.FLOAT, false, 0, 0);
 
     document.getElementById('info').innerHTML = "<i>Frame Rate</i>: ...";
-    start_time = Date.now();
-    num_frames = 0;
+	start_time = Date.now();
     window.requestAnimationFrame(render, canvas);
 }
 
@@ -161,8 +160,9 @@ function render()
 //    gl.uniform1f(time_location, 0.1);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    num_frames++;
-    var fps = num_frames/((Date.now() - start_time)/1000.0);
+	snapshot_times.push(Date.now());
+	if (snapshot_times.length > 10) snapshot_times.shift();
+	var fps = ((snapshot_times.length-1)*1000)/(snapshot_times[snapshot_times.length-1] - snapshot_times[0]);
     document.getElementById('info').innerHTML = "<i>Frame Rate</i>: " + fps.toFixed(2) + " fps";
     window.requestAnimationFrame(render, canvas);
 }
