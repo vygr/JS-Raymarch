@@ -11,10 +11,9 @@
 window.onload = main;
 
 var gl;
-var time = 0.0;
-var start = 0.0;
-var fps = 0;
-var fpstime = 0.0;
+
+var start_time;
+var num_frames = 0;
 
 var time_location;
 var arg_aa_location;
@@ -120,7 +119,8 @@ function main()
     gl.vertexAttribPointer(position_location, 2, gl.FLOAT, false, 0, 0);
 
     document.getElementById('info').innerHTML = "<i>Frame Rate</i>: ...";
-    start = Date.now();
+    start_time = Date.now();
+    num_frames = 0;
     window.requestAnimationFrame(render, canvas);
 }
 
@@ -157,23 +157,13 @@ function render()
 	gl.uniform1i(arg_depth_location, document.getElementById("arg_depth").value);
 	gl.uniform1f(arg_ref_location, document.getElementById("arg_ref").value);
 	gl.uniform1f(arg_shadow_location, document.getElementById("arg_shadow").value);
-
-    var elapsedtime = (Date.now() - start)/1000.0;
-    var framespeed = 1.0;
-    time += framespeed*elapsedtime;
-    gl.uniform1f(time_location, time);
+    gl.uniform1f(time_location, (Date.now() - start_time)/1000.0);
 //    gl.uniform1f(time_location, 0.1);
-
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-    fps++;
-    fpstime += elapsedtime;
-    if(fpstime>=1.0)
-	{
-        fpstime -= 1.0;
-        document.getElementById('info').innerHTML = "<i>Frame Rate</i>: " + fps + " fps";
-        fps = 0;
-    }
-    start = Date.now();
+
+    num_frames++;
+    var fps = num_frames/((Date.now() - start_time)/1000.0);
+    document.getElementById('info').innerHTML = "<i>Frame Rate</i>: " + fps.toFixed(2) + " fps";
     window.requestAnimationFrame(render, canvas);
 }
 </script>
@@ -210,7 +200,7 @@ uniform float arg_shadow;
 
 const float eps = 0.001;
 const float min_distance = 0.005;
-const float clipFar = 8.0;
+const float clipFar = 80.0;
 const vec3 bgcolor = vec3(0.);
 
 vec3 cam_pos = vec3(0., 0., time*0.1);
@@ -312,7 +302,7 @@ vec3 lighting(vec3 sp, vec3 sn, vec3 cp)
     float ao = 1.0-arg_ao;
 	if (ao < 1.0) ao = ao + (1.0-ao)*calc_ao(sp, sn);
 
-    float ambient = .05;
+    float ambient = 0.05;
     float specularPower = 8.0;
     float diffuse = max(0.0, dot(sn, ld));
     float specular = max(0.0, dot(ref, normalize(cp-sp)));
@@ -346,7 +336,7 @@ vec4 scene_ray(vec3 ro, vec3 rd)
 	vec3 sn = get_normal(sp);
 	vec3 color = lighting(sp, sn, ro);
 	float ref = arg_ref;
-	for (int i = 1; i > 0; i++)
+	for (int i = 1; i < 3; i++)
 	{
 		if (i > arg_depth) break;
 		ro = sp;
