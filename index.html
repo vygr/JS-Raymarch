@@ -7,6 +7,7 @@
 </style>
 
 <script type="text/javascript">
+"use strict";
 
 window.onload = main;
 
@@ -24,6 +25,9 @@ var arg_ao_location;
 var arg_depth_location;
 var arg_ref_location;
 var arg_shadow_location;
+var arg_bump_location;
+var arg_dis_location;
+var arg_march_location;
 
 function getShader(gl, id)
 {
@@ -100,6 +104,7 @@ function main()
 	arg_ref_location = gl.getUniformLocation(program, "arg_ref");
 	arg_shadow_location = gl.getUniformLocation(program, "arg_shadow");
 	arg_bump_location = gl.getUniformLocation(program, "arg_bump");
+	arg_dis_location = gl.getUniformLocation(program, "arg_dis");
 	arg_march_location = gl.getUniformLocation(program, "arg_march");
 
     gl.uniform2f(resolution_location, canvas.width, canvas.height);
@@ -159,6 +164,7 @@ function render()
 	gl.uniform1f(arg_ref_location, document.getElementById("arg_ref").value);
 	gl.uniform1f(arg_shadow_location, document.getElementById("arg_shadow").value);
 	gl.uniform1f(arg_bump_location, document.getElementById("arg_bump").value);
+	gl.uniform1f(arg_dis_location, document.getElementById("arg_dis").value);
 	gl.uniform1f(arg_march_location, document.getElementById("arg_march").value);
     gl.uniform1f(time_location, (Date.now() - start_time)/1000.0);
 //    gl.uniform1f(time_location, 10);
@@ -200,6 +206,7 @@ uniform float arg_ao;
 uniform float arg_ref;
 uniform float arg_shadow;
 uniform float arg_bump;
+uniform float arg_dis;
 uniform float arg_march;
 
 #define PI 3.1415926535898
@@ -235,13 +242,13 @@ float noise(vec3 x)
                    mix(hash(n+168.0), hash(n+175.0),f.x),f.y),f.z);
 }
 
-float sinusoidal_bump(in vec3 p)
+float sinusoidal_bump(vec3 p)
 {
     return sin(p.x*4.+time*0.97)*cos(p.y*4.+time*2.17)*sin(p.z*4.-time*1.31)
 	 	+ 0.5*sin(p.x*8.+time*0.57)*cos(p.y*8.+time*2.11)*sin(p.z*8.-time*1.23);
 }
 
-float bump(in vec3 p)
+float bump(vec3 p)
 {
      return noise(p*64.0)*0.667+noise(p*128.0)*0.333;
 }
@@ -256,7 +263,7 @@ vec3 bumpmap(vec3 p, vec3 n, float bf)
 }
 
 //field equation for a sphere.
-float sphere(in vec3 p, in vec3 center, float radius)
+float sphere(vec3 p, vec3 center, float radius)
 {
     return length(p-center) - radius;
 }
@@ -282,10 +289,9 @@ float smin(float a, float b, float k)
 }
 
 //the scene
-float scene(in vec3 p)
+float scene(vec3 p)
 {
-	vec3 c = floor(p);
-	float d = sinusoidal_bump(p*4.0)*0.02;
+	float d = sinusoidal_bump(p*4.0)*arg_dis;
 	p = fract(p)-0.5;
     return sphere(p, vec3(0.0), 0.35) + d;
 //    return smin(box(p, vec3(0.25,0.25,0.25)),
@@ -299,7 +305,7 @@ float scene(in vec3 p)
 //                sphere(p, vec3(0.,0.,0.), 0.35));
 }
 
-vec3 get_normal(in vec3 p)
+vec3 get_normal(vec3 p)
 {
 	return normalize(vec3(
 		scene(vec3(p.x+eps,p.y,p.z))-scene(vec3(p.x-eps,p.y,p.z)),
@@ -498,6 +504,10 @@ void main(void)
 			  <tr>
 			    <td><input id="arg_bump_num" type="number" min="0" max="0.01" step="0.0001" value ="0" oninput="arg_bump.value=value"/></td>
 				<td><input id="arg_bump" type="range" min="0" max="0.01" step="0.0001" value ="0" oninput="arg_bump_num.value=value"/>Bump Factor<br></td>
+			  </tr>
+			  <tr>
+			    <td><input id="arg_dis_num" type="number" min="0" max="0.03" step="0.0001" value ="0" oninput="arg_dis.value=value"/></td>
+				<td><input id="arg_dis" type="range" min="0" max="0.03" step="0.0001" value ="0" oninput="arg_dis_num.value=value"/>Displace Factor<br></td>
 			  </tr>
 			  <tr>
 			    <td><input id="arg_march_num" type="number" min="0.25" max="1.0" step="0.0001" value ="0.75" oninput="arg_march.value=value"/></td>
