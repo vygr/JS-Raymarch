@@ -468,75 +468,40 @@ void main(void)
 		<div style="float:left; width:25%;">
 			<table style="width:100%">
 			  <tr>
-			    <td>
-                    <input id="arg_aa" type="checkbox">Anti Alias<br>
-				</td>
-                <td>
-                    <input id="arg_aa_adaptive" type="checkbox">Adaptive Mode<br>
-				</td>
+			    <td><input id="arg_aa" type="checkbox">Anti Alias<br></td>
+                <td><input id="arg_aa_adaptive" type="checkbox">Adaptive Mode<br></td>
 			  </tr>
               <tr>
-			    <td>
-                    <input id="arg_aa_debug" type="checkbox">Anti Alias Debug<br>
-				</td>
-                <td>
-				</td>
+			    <td><input id="arg_aa_debug" type="checkbox">Anti Alias Debug<br></td>
+                <td></td>
 			  </tr>
               <tr>
-			    <td>
-					<input id="arg_aa_limit_num" type="number" min="0" max="32" step="1" value ="16" oninput="arg_aa_limit.value=value"/>
-				</td>
-				<td>
-					<input id="arg_aa_limit" type="range" min="0" max="32" step="1" value ="16" oninput="arg_aa_limit_num.value=value"/>Adaptive Limit<br>
-				</td>
+			    <td><input id="arg_aa_limit_num" type="number" min="0" max="32" step="1" value ="16" oninput="arg_aa_limit.value=value"/></td>
+				<td><input id="arg_aa_limit" type="range" min="0" max="32" step="1" value ="16" oninput="arg_aa_limit_num.value=value"/>Adaptive Limit<br></td>
 			  </tr>
 			  <tr>
-			    <td>
-					<input id="arg_depth_num" type="number" min="0" max="2" step="1" value ="1" oninput="arg_depth.value=value"/>
-				</td>
-				<td>
-					<input id="arg_depth" type="range" min="0" max="2" step="1" value ="1" oninput="arg_depth_num.value=value"/>Reflection Depth<br>
-				</td>
+			    <td><input id="arg_depth_num" type="number" min="0" max="2" step="1" value ="1" oninput="arg_depth.value=value"/></td>
+				<td><input id="arg_depth" type="range" min="0" max="2" step="1" value ="1" oninput="arg_depth_num.value=value"/>Reflection Depth<br></td>
 			  </tr>
 			  <tr>
-			    <td>
-					<input id="arg_ref_num" type="number" min="0" max="1" step="0.01" value ="0.3" oninput="arg_ref.value=value"/>
-				</td>
-				<td>
-					<input id="arg_ref" type="range" min="0" max="1" step="0.01" value ="0.3" oninput="arg_ref_num.value=value"/>Reflection Coef<br>
-				</td>
+			    <td><input id="arg_ref_num" type="number" min="0" max="1" step="0.01" value ="0.3" oninput="arg_ref.value=value"/></td>
+				<td><input id="arg_ref" type="range" min="0" max="1" step="0.01" value ="0.3" oninput="arg_ref_num.value=value"/>Reflection Coef<br></td>
 			  </tr>
 			  <tr>
-			    <td>
-					<input id="arg_ao_num" type="number" min="0" max="1" step="0.01" value ="0.2" oninput="arg_ao.value=value"/>
-				</td>
-				<td>
-					<input id="arg_ao" type="range" min="0" max="1" step="0.01" value ="0.2" oninput="arg_ao_num.value=value"/>Ambient Oclusion<br>
-				</td>
+			    <td><input id="arg_ao_num" type="number" min="0" max="1" step="0.01" value ="0.2" oninput="arg_ao.value=value"/></td>
+				<td><input id="arg_ao" type="range" min="0" max="1" step="0.01" value ="0.2" oninput="arg_ao_num.value=value"/>Ambient Oclusion<br></td>
 			  </tr>
 			  <tr>
-			    <td>
-					<input id="arg_shadow_num" type="number" min="32" max="256" step="0.01" value ="32" oninput="arg_shadow.value=value"/>
-				</td>
-				<td>
-					<input id="arg_shadow" type="range" min="32" max="256" step="0.01" value ="32" oninput="arg_shadow_num.value=value"/>Shadow Softness<br>
-				</td>
+			    <td><input id="arg_shadow_num" type="number" min="32" max="256" step="0.01" value ="32" oninput="arg_shadow.value=value"/></td>
+				<td><input id="arg_shadow" type="range" min="32" max="256" step="0.01" value ="32" oninput="arg_shadow_num.value=value"/>Shadow Softness<br></td>
 			  </tr>
 			  <tr>
-			    <td>
-					<input id="arg_bump_num" type="number" min="0" max="0.01" step="0.0001" value ="0" oninput="arg_bump.value=value"/>
-				</td>
-				<td>
-					<input id="arg_bump" type="range" min="0" max="0.01" step="0.0001" value ="0" oninput="arg_bump_num.value=value"/>Bump Factor<br>
-				</td>
+			    <td><input id="arg_bump_num" type="number" min="0" max="0.01" step="0.0001" value ="0" oninput="arg_bump.value=value"/></td>
+				<td><input id="arg_bump" type="range" min="0" max="0.01" step="0.0001" value ="0" oninput="arg_bump_num.value=value"/>Bump Factor<br></td>
 			  </tr>
 			  <tr>
-			    <td>
-					<input id="arg_march_num" type="number" min="0.25" max="1.0" step="0.0001" value ="0.75" oninput="arg_march.value=value"/>
-				</td>
-				<td>
-					<input id="arg_march" type="range" min="0.25" max="1.0" step="0.0001" value ="0.75" oninput="arg_march_num.value=value"/>March Scale<br>
-				</td>
+			    <td><input id="arg_march_num" type="number" min="0.25" max="1.0" step="0.0001" value ="0.75" oninput="arg_march.value=value"/></td>
+				<td><input id="arg_march" type="range" min="0.25" max="1.0" step="0.0001" value ="0.75" oninput="arg_march_num.value=value"/>March Scale<br></td>
 			  </tr>
 			</table>
 		</div>
