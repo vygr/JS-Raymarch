@@ -291,7 +291,8 @@ float smin(float a, float b, float k)
 //the scene
 float scene(vec3 p)
 {
-	float d = sinusoidal_bump(p*4.0)*arg_dis;
+	float d = 0.0;
+	if (arg_dis > 0.0) d = sinusoidal_bump(p*4.0)*arg_dis;
 	p = fract(p)-0.5;
     return sphere(p, vec3(0.0), 0.35) + d;
 //    return smin(box(p, vec3(0.25,0.25,0.25)),
@@ -408,9 +409,7 @@ vec4 scene_ray(vec3 ro, vec3 rd)
 			break;
 		}
 		sp = ro + rd*r_ray.x;
-		sn = get_normal(sp);
-		vec3 bn = sn;
-		if (arg_bump > 0.0) bn = bumpmap(sp, sn, arg_bump);
+		bn = get_normal(sp);
 		color += lighting(sp, bn, ro)*ref;
 		ref *= arg_ref;
 	}
