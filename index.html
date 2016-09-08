@@ -99,6 +99,7 @@ function main()
 	arg_depth_location = gl.getUniformLocation(program, "arg_depth");
 	arg_ref_location = gl.getUniformLocation(program, "arg_ref");
 	arg_shadow_location = gl.getUniformLocation(program, "arg_shadow");
+	arg_bump_location = gl.getUniformLocation(program, "arg_bump");
 
     gl.uniform2f(resolution_location, canvas.width, canvas.height);
     var mx = Math.max(canvas.width, canvas.height);
@@ -156,8 +157,9 @@ function render()
 	gl.uniform1i(arg_depth_location, document.getElementById("arg_depth").value);
 	gl.uniform1f(arg_ref_location, document.getElementById("arg_ref").value);
 	gl.uniform1f(arg_shadow_location, document.getElementById("arg_shadow").value);
+	gl.uniform1f(arg_bump_location, document.getElementById("arg_bump").value);
     gl.uniform1f(time_location, (Date.now() - start_time)/1000.0);
-//    gl.uniform1f(time_location, 0.1);
+//    gl.uniform1f(time_location, 10);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
 	snapshot_times.push(Date.now());
@@ -195,6 +197,7 @@ uniform float arg_aa_limit;
 uniform float arg_ao;
 uniform float arg_ref;
 uniform float arg_shadow;
+uniform float arg_bump;
 
 #define PI 3.1415926535898
 
@@ -205,6 +208,43 @@ const vec3 bgcolor = vec3(0.);
 
 vec3 cam_pos = vec3(0., 0., time*0.1);
 vec3 light_pos = vec3(cam_pos.x + 0.5*cos(time), cam_pos.y + 0.0*sin(time), cam_pos.z);
+
+float hash(float n)
+{
+    return fract(sin(n)*43758.5453);
+}
+
+vec3 hash33(vec3 p)
+{
+    float n = sin(dot(p, vec3(7, 157, 113)));
+    return fract(vec3(2097152, 262144, 32768)*n);
+}
+
+float noise(vec3 x)
+{
+    vec3 p = floor(x);
+    vec3 f = fract(x);
+    f = f*f*(3.0-2.0*f);
+    float n = p.x*7.0 + p.y*57.0 + 111.0*p.z;
+    return mix(mix(mix(hash(n+  0.0), hash(n+  7.0),f.x),
+                   mix(hash(n+ 57.0), hash(n+ 64.0),f.x),f.y),
+               mix(mix(hash(n+111.0), hash(n+118.0),f.x),
+                   mix(hash(n+168.0), hash(n+175.0),f.x),f.y),f.z);
+}
+
+float bump(in vec3 p)
+{
+     return noise(p*64.0)*0.667+noise(p*128.0)*0.333;
+}
+
+vec3 bumpmap(vec3 p, vec3 n, float bf)
+{
+    vec3 grad = vec3(bump(vec3(p.x+eps, p.y, p.z))-bump(vec3(p.x-eps, p.y, p.z)),
+					bump(vec3(p.x, p.y+eps, p.z))-bump(vec3(p.x, p.y-eps, p.z)),
+					bump(vec3(p.x, p.y, p.z+eps))-bump(vec3(p.x, p.y, p.z-eps)))/(eps+eps);
+    grad -= n*dot(n, grad);
+    return normalize(n-bf*grad);
+}
 
 //field equation for a sphere.
 float sphere(in vec3 p, in vec3 center, float radius)
@@ -220,9 +260,9 @@ float box(vec3 p, vec3 b)
 }
 
 //field equation for a rounded cube.
-float roundedCube(vec3 p, vec3 boxExtents, float edgeRadius)
+float rounded_cube(vec3 p, vec3 xt, float r)
 {
-	return length(max(abs(p)-boxExtents + vec3(edgeRadius), 0.0)) - edgeRadius;
+	return length(max(abs(p)-xt + vec3(r), 0.0)) - r;
 }
 
 //smooth min between two values
@@ -235,8 +275,9 @@ float smin(float a, float b, float k)
 //the scene
 float scene(in vec3 p)
 {
-    p = mod(p, vec3(1.0)) - 0.5;
-    return sphere(p, vec3(0.0, 0.0, 0.0), 0.35);
+	vec3 c = floor(p);
+	p = fract(p)-0.5;
+    return sphere(p, vec3(0.0), 0.35);
 //    return smin(box(p, vec3(0.25,0.25,0.25)),
 //                sphere(p, vec3(0.,0.,0.), 0.35),
 //                0.025);
@@ -334,13 +375,15 @@ vec4 scene_ray(vec3 ro, vec3 rd)
 	if (p_ray.x >= clipFar) return vec4(bgcolor, p_ray.y);
 	vec3 sp = ro + rd*p_ray.x;
 	vec3 sn = get_normal(sp);
-	vec3 color = lighting(sp, sn, ro);
+	vec3 bn = sn;
+	if (arg_bump > 0.0) bn = bumpmap(sp, sn, arg_bump);
+	vec3 color = lighting(sp, bn, ro);
 	float ref = arg_ref;
 	for (int i = 1; i < 3; i++)
 	{
 		if (i > arg_depth) break;
 		ro = sp;
-		rd = reflect(rd, sn);
+		rd = reflect(rd, bn);
         vec2 r_ray = ray_march(ro, rd, min_distance*5.0, clipFar);
         p_ray.y = max(p_ray.y, r_ray.y);
 		if (r_ray.x >= clipFar)
@@ -350,7 +393,9 @@ vec4 scene_ray(vec3 ro, vec3 rd)
 		}
 		sp = ro + rd*r_ray.x;
 		sn = get_normal(sp);
-		color += lighting(sp, sn, ro)*ref;
+		vec3 bn = sn;
+		if (arg_bump > 0.0) bn = bumpmap(sp, sn, arg_bump);
+		color += lighting(sp, bn, ro)*ref;
 		ref *= arg_ref;
 	}
     return vec4(clamp(color, 0.0, 1.0), p_ray.y);
@@ -465,6 +510,14 @@ void main(void)
 				</td>
 				<td>
 					<input id="arg_shadow" type="range" min="32" max="256" step="0.01" value ="32" oninput="arg_shadow_num.value=value"/>Shadow Softness<br>
+				</td>
+			  </tr>
+			  <tr>
+			    <td>
+					<input id="arg_bump_num" type="number" min="0" max="0.01" step="0.0001" value ="0" oninput="arg_bump.value=value"/>
+				</td>
+				<td>
+					<input id="arg_bump" type="range" min="0" max="0.01" step="0.0001" value ="0" oninput="arg_bump_num.value=value"/>Bump Factor<br>
 				</td>
 			  </tr>
 			</table>
