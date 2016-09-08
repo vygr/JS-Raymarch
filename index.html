@@ -100,6 +100,7 @@ function main()
 	arg_ref_location = gl.getUniformLocation(program, "arg_ref");
 	arg_shadow_location = gl.getUniformLocation(program, "arg_shadow");
 	arg_bump_location = gl.getUniformLocation(program, "arg_bump");
+	arg_march_location = gl.getUniformLocation(program, "arg_march");
 
     gl.uniform2f(resolution_location, canvas.width, canvas.height);
     var mx = Math.max(canvas.width, canvas.height);
@@ -158,6 +159,7 @@ function render()
 	gl.uniform1f(arg_ref_location, document.getElementById("arg_ref").value);
 	gl.uniform1f(arg_shadow_location, document.getElementById("arg_shadow").value);
 	gl.uniform1f(arg_bump_location, document.getElementById("arg_bump").value);
+	gl.uniform1f(arg_march_location, document.getElementById("arg_march").value);
     gl.uniform1f(time_location, (Date.now() - start_time)/1000.0);
 //    gl.uniform1f(time_location, 10);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -198,6 +200,7 @@ uniform float arg_ao;
 uniform float arg_ref;
 uniform float arg_shadow;
 uniform float arg_bump;
+uniform float arg_march;
 
 #define PI 3.1415926535898
 
@@ -230,6 +233,12 @@ float noise(vec3 x)
                    mix(hash(n+ 57.0), hash(n+ 64.0),f.x),f.y),
                mix(mix(hash(n+111.0), hash(n+118.0),f.x),
                    mix(hash(n+168.0), hash(n+175.0),f.x),f.y),f.z);
+}
+
+float sinusoidal_bump(in vec3 p)
+{
+    return sin(p.x*4.+time*0.97)*cos(p.y*4.+time*2.17)*sin(p.z*4.-time*1.31)
+	 	+ 0.5*sin(p.x*8.+time*0.57)*cos(p.y*8.+time*2.11)*sin(p.z*8.-time*1.23);
 }
 
 float bump(in vec3 p)
@@ -276,8 +285,9 @@ float smin(float a, float b, float k)
 float scene(in vec3 p)
 {
 	vec3 c = floor(p);
+	float d = sinusoidal_bump(p*4.0)*0.02;
 	p = fract(p)-0.5;
-    return sphere(p, vec3(0.0), 0.35);
+    return sphere(p, vec3(0.0), 0.35) + d;
 //    return smin(box(p, vec3(0.25,0.25,0.25)),
 //                sphere(p, vec3(0.,0.,0.), 0.35),
 //                0.025);
@@ -357,7 +367,7 @@ vec2 ray_march(vec3 ro, vec3 rd, float l, float end)
     for (float i = 1.0; i < 1000.0; i++)
     {
 		d = scene(ro + rd*l);
-        l += d;
+        l += d*arg_march;
 		cnt = i;
 		if ((d <= min_distance) || (l >= end)) break;
 	}
@@ -518,6 +528,14 @@ void main(void)
 				</td>
 				<td>
 					<input id="arg_bump" type="range" min="0" max="0.01" step="0.0001" value ="0" oninput="arg_bump_num.value=value"/>Bump Factor<br>
+				</td>
+			  </tr>
+			  <tr>
+			    <td>
+					<input id="arg_march_num" type="number" min="0.25" max="1.0" step="0.0001" value ="0.75" oninput="arg_march.value=value"/>
+				</td>
+				<td>
+					<input id="arg_march" type="range" min="0.25" max="1.0" step="0.0001" value ="0.75" oninput="arg_march_num.value=value"/>March Scale<br>
 				</td>
 			  </tr>
 			</table>
